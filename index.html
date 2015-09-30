@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>Gibby</title>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="user-scalable=0, minimum-scale=1.0, maximum-scale=1.0"/>
+        <script src="lib/quintus.js"></script>
+        <script src="lib/quintus_sprites.js"></script>
+        <script src="lib/quintus_scenes.js"></script>
+        <script src="lib/quintus_input.js"></script>
+        <script src="lib/quintus_anim.js"></script>
+        <script src="lib/quintus_2d.js"></script>
+        <script src="lib/quintus_touch.js"></script>
+        <script src="lib/quintus_ui.js"></script>   
+        <script src="lib/quintus_audio.js"></script>   
+    </head>
+    <body style="background-color: black;margin:0px;border:0px;">
+        <script>
+          var Q = window.Q = Quintus({development: true})
+            .include('Sprites, Scenes, 2D, UI')
+            .setup({
+			  maximize: true,
+			  scaleToFit: true
+            });
+
+          //turn off gravity
+          Q.gravityY = 60;
+          //Q.gravityX = 0;
+
+          //constants
+		  Q.GROUND = 1;
+          Q.GIBBY = 2;
+          Q.GEM = 4;
+          Q.SPRITE_PLANT = 8;
+          Q.SPRITE_BULLET = 16;
+          Q.SPRITE_GROUND = 32;
+		  
+		  Q.UI.Container.extend('Sky', {
+			scale: Q.height/350,
+		    init: function(p) {
+			  this.totalSize = Q.height*10;
+			  this.changeSize = Math.floor(this.totalSize*3/5);
+			  this.shiftSize = Math.floor(this.totalSize*5/20);
+		      var grd=Q.ctx.createLinearGradient(0,this.shiftSize,0,this.shiftSize-this.totalSize);
+        	  grd.addColorStop(0,'#8D2B6C');
+		      grd.addColorStop(.20,'#D9CC66');
+    		  grd.addColorStop(.40,'#59A699');
+    		  grd.addColorStop(.60,'#8D2B6C');
+			  grd.addColorStop(.80,'#D9CC66');
+    		  grd.addColorStop(1,'#59A699');
+              this._super(p, {
+				  fill: grd,
+                  x: Q.width/2,
+                  y: Q.height/2,
+                  radius: 0,
+                  border: 0,
+                  shadow: 0,
+                  w: Q.width,
+                  h: this.totalSize,
+              });
+            },
+			updateSky: function() {
+			console.log(((Q.state.get("height")*this.scale)%this.changeSize)+" "+this.changeSize);
+			  var heightShift = Math.floor((Q.state.get("height")*this.scale)%this.changeSize+this.shiftSize);
+		      var grd=Q.ctx.createLinearGradient(0,heightShift,0,heightShift-this.totalSize);
+        	  grd.addColorStop(0,'#8D2B6C');
+		      grd.addColorStop(.20,'#D9CC66');
+    		  grd.addColorStop(.40,'#59A699');
+    		  grd.addColorStop(.60,'#8D2B6C');
+			  grd.addColorStop(.80,'#D9CC66');
+    		  grd.addColorStop(1,'#59A699');
+			  this.p.fill = grd;
+			}
+		  });
+		  
+		  Q.UI.Container.extend('Ground', {
+		    init: function(p) {
+              this._super(p, {
+				  fill: "#0D0D0D",
+				  type: Q.GROUND,
+				  collisionMask: Q.GIBBY,
+                  x: Q.width/2,
+                  y: Q.height*9/10,
+                  radius: 0,
+                  border: 0,
+                  shadow: 0,
+                  w: Q.width,
+                  h: Q.height/5,
+              });
+			  this.add('2d');
+            },
+			updateGround: function() {
+			  //this.p.y = Q.height*9/10 + Q.state.get("height");
+			}
+		  });
+		  
+		Q.Sprite.extend('Gibby', {
+			startPos: Q.height*7/10,
+			init: function(p) {
+				this._super(p, { 
+					asset: 'sun.png',
+					type: Q.GIBBY,
+					collisionMask: Q.GROUND | Q.GEM,
+					x: Q.width/2,
+					y: Q.height*7/10,//-Q.height/2,
+					w: Q.height/5,
+					h: Q.height/5,
+				});
+				
+				//this.p.originalVx = this.p.vx;
+			},
+			step: function(dt) {	
+				Q.state.inc("height", 1);
+				//var newHeight = Math.floor((this.startPos-this.p.y)*Q.height/1000);
+				//if(newHeight!=Q.state.get("height")){
+				//	Q.state.set("height", newHeight);
+				//}
+			},
+			updateGibby: function() {
+				//console.log(Math.min(Q.state.get('height'), Q.height*1/10));
+				//this.p.y = Q.height*7/10 - Q.state.get('height')*Q.height/1000;
+			},
+		});
+		
+		Q.Sprite.extend('LoadingBall',{
+			init: function(p) {
+				this._super(p, {
+					shape: 'circle',
+					color: 'red',
+					stroke: true,
+					//restitution: 0.5,
+					//density: 4,
+					x: Q.width/2,
+					y: Q.height/2,
+					w: Q.height/5,
+					h: Q.height/5
+				});
+				this.on('change.loaded',function(p){
+					//	p.r = Q.state.get('loaded');
+				});
+			}
+		});
+		
+		  Q.scene('loading', function(stage){
+			Q.state.reset({height: 0});
+			var container = stage.insert(new Q.Sky());
+			/*stage.insert(new Q.UI.Text({ 
+				label: "LOading",
+				color: "white",
+				x: 0,
+				y: 0
+			}),container);*/
+			stage.insert(new Q.LoadingBall());
+		  });
+		  
+          Q.scene('level', function(stage) {
+			Q.state.reset({height: 0});
+            stage.insert(new Q.Sky());  
+			stage.insert(new Q.Ground()); 
+			var gib = stage.insert(new Q.Gibby());  			
+			stage.add("viewport").follow(gib,{ x: false, y: true });
+			//stage.viewport.offsetX = Q.width/2;
+			stage.viewport.offsetY = Q.height/5;
+			//stage.centerOn(Q('Gibby',0).items[0].p.x, Q('Gibby',0).items[0].p.y);
+
+          });
+		  
+		  Q.stageScene('loading');
+          //load assets 
+		  
+          Q.load('background.png, sun.png, zombie1.png, zombie2.png, zombie3.png, chicken.png', function() {
+            //Q.stageScene('level');  
+			Q.state.on('change.height', function() {
+				Q('Sky').first().updateSky();
+				Q('Ground').first().updateGround();
+				Q('Gibby').first().updateGibby();
+			});
+          }, {
+			progressCallback: function(loaded,total) {
+				Q.state.set("loaded", Math.floor(loaded/total*100));
+				//var element = document.getElementById("loading_progress");
+				//element.style.width = Math.floor(loaded/total*100) + "%";
+			}
+		  });
+        </script>
+    </body>
+</html>
